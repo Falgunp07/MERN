@@ -8,7 +8,7 @@ const connectDB = async () => {
     mongoose.connection.on('disconnected', () => console.log('MongoDB database disconnected. :('));
 
     // Attempt to connect to the database
-    await mongoose.connect(`${process.env.MONGODB_URI}/Edemy`);
+    await mongoose.connect(`${process.env.MONGODB_URI}/edemy-backend`);
 
   } catch (error) {
     console.error(`Error connecting to MongoDB: ${error.message}`);
