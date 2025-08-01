@@ -102,7 +102,7 @@ export const clerkWebhooks = async (req, res) => {
     return res.status(200).json({ success: true, message: 'Webhook received, but no action taken for this event type.' });
 
   } catch (error) {
-    console.error("ERROR processing webhook:", error.message); // <-- ADDED
+    console.error("ERROR processing of webhook:", error.message); // <-- ADDED
     return res.status(400).json({ success: false, message: error.message });
   }
 };
