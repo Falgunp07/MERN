@@ -77,6 +77,7 @@ export const AppContextProvider = (props) => {
         console.log(await getToken());
         
     }
+    
     useEffect(()=>{
         if(user){
             logToken()
