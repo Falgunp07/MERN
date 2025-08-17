@@ -81,7 +81,7 @@ export const stripeWebhooks = async (request, response) => {
                 payment_intent: paymentIntentId
             })
 
-            const { purchaseId } = session.data[0].metaadata;
+            const { purchaseId } = session.data[0].metadata;
 
             const purchaseData = await Purchase.findById(purchaseId)
             const userData = await User.findById(purchaseData.userId)
