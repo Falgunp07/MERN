@@ -1,11 +1,14 @@
 import React, { useContext, useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { data, useParams } from 'react-router-dom'
 import { AppContext } from '../../context/AppContext'
 import Loading from '../../components/student/Loading'
 import { assets } from '../../assets/assets'
 import humanizeDuration from 'humanize-duration'
 import Footer from '../../components/student/Footer'
-import YouTube  from 'react-youtube'
+import YouTube from 'react-youtube'
+import { toast } from 'react-toastify'
+import axios from 'axios';
+
 
 
 const CourseDetails = () => {
@@ -17,16 +20,54 @@ const CourseDetails = () => {
   const [isAlreadyEnrolled, setIsAlreadyEnrolled] = useState(false)
   const [playerData, setPlayerData] = useState(null)
 
-  const { allCourses, calculateRating, calculatNoOfLectures, calculateCourseDuration, calculateChapterTime, currency } = useContext(AppContext)
+  const { allCourses, calculateRating, calculatNoOfLectures, calculateCourseDuration, calculateChapterTime, currency, backendUrl, userData, getToken } = useContext(AppContext)
 
   const fetchCourseData = async () => {
-    const findCourse = allCourses.find(course => course._id === id)
-    setCourseData(findCourse);
+    try {
+      const { data } = await axios.get(backendUrl + '/api/course/' + id)
+
+      if (data.success) {
+        setCourseData(data.courseData)
+      } else {
+        toast.error(data.message)
+      }
+    } catch (error) {
+      toast.error(error.message)
+    }
+  }
+  const enrollCourse = async()=>{
+    try {
+      if(!userData){
+        return toast.warn('Login to Enroll')
+      }
+      if(isAlreadyEnrolled){
+        return toast.warn('Already Enrolled')
+      }
+      const token = await getToken();
+
+      const {data} = await axios.post(backendUrl + '/api/user/purchase',{courseId: courseData._id},{headers : {Authorization: `Bearer ${token}`}})
+      if(data.success){
+        const {session_url} = data
+        window.location.replace(session_url)
+      }else{
+        toast.error(data.message)
+      }
+    } catch (error) {
+        toast.error(error.message) 
+    }
   }
 
   useEffect(() => {
     fetchCourseData()
-  }, [allCourses])
+  }, [])
+
+  useEffect(() => {
+    if(userData && courseData){
+      setIsAlreadyEnrolled(userData.enrolledCourses.includes(courseData._id))
+    }
+  }, [userData, courseData])
+
+
 
   const toggleSection = (index) => {
     setOpenSections((prev) => (
@@ -64,7 +105,7 @@ const CourseDetails = () => {
               {courseData.enrolledStudents.length}                      {courseData.enrolledStudents.length > 1 ? 'students' : 'student'}
             </p>
           </div>
-          <p className='text-sm'>Course by <span className='text-blue-600 underline'>Falgun</span></p>
+          <p className='text-sm'>Course by <span className='text-blue-600 underline'>{courseData.educator.name}</span></p>
 
           <div className=' pt-8 text-gray-800'>
             <h2 className='text-xl font-semibold'>Course Structure</h2>
@@ -84,14 +125,14 @@ const CourseDetails = () => {
                       {chapter.chapterContent.map((lecture, i) => (
                         <li key={i} className='flex items-start gap-2 py-1'>
                           <img src={assets.play_icon} alt="play icon" className='w-4 h-4 mt-1' />
-                          <div className='flex items-center justify-between w-full text-gray-2=800 text-xs md:text-default'>
+                          <div className='flex items-center justify-between w-full text-gray-800 text-xs md:text-default'>
                             <p>{lecture.lectureTitle}</p>
                             <div className='flex gap-2'>
                               {lecture.isPreviewFree && <p
-                              onClick={()=> setPlayerData({
-                                videoId: lecture.lectureUrl.split('/').pop()
-                              })}
-                              className='text-blue-500 cursor-pointer'>Preview</p>}
+                                onClick={() => setPlayerData({
+                                  videoId: lecture.lectureUrl.split('/').pop()
+                                })}
+                                className='text-blue-500 cursor-pointer'>Preview</p>}
                               <p>{humanizeDuration(lecture.lectureDuration * 60 * 1000, { units: ['h', 'm'] })}</p>
                             </div>
                           </div>
@@ -113,15 +154,17 @@ const CourseDetails = () => {
         <div className='max-w-course-card z-10 shadow-custom-card rounded-t md:rounded-none overflow-hidden bg-white min-w-[300px] sm:min-w-[420px]'>
 
           {
-             playerData ? 
-                  <YouTube videoId={playerData.videoId} opts={{playerVars: {
-                    autoplay: 1
-                  }}} iframeClassName='w-full aspect-video'/>
-                :   <img src={courseData.courseThumbnail} alt="" />
+            playerData ?
+              <YouTube videoId={playerData.videoId} opts={{
+                playerVars: {
+                  autoplay: 1
+                }
+              }} iframeClassName='w-full aspect-video' />
+              : <img src={courseData.courseThumbnail} alt="" />
           }
           <div className='p-5'>
             <div className='flex items-center gap-2'>
-                  <img className='w-4' src={assets.time_left_clock_icon} alt="time_left_clock_icon" />
+              <img className='w-4' src={assets.time_left_clock_icon} alt="time_left_clock_icon" />
               <p className='text-red-500'> <span className='font-medium'>5 Days</span>  left at this price!</p>
             </div>
 
@@ -152,9 +195,8 @@ const CourseDetails = () => {
               </div>
 
             </div>
-            {/* <button className='md:mt-6 mt-4 w-full py-3 rounded bg-red-600 text-white font-medium'
-            >{isAlreadyEnrolled ? 'Already Enrolled' : 'Enroll Now'}</button> */}
-            <button
+          
+            <button onClick={enrollCourse}
               className={`md:mt-6 mt-4 w-full py-3 rounded text-white font-medium ${isAlreadyEnrolled ? 'bg-green-600' : 'bg-red-600'}`}
             >
               {isAlreadyEnrolled ? 'Already Enrolled' : 'Enroll Now'}
