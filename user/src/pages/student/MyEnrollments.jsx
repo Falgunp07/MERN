@@ -1,24 +1,46 @@
-import React, { useContext, useState } from 'react'
+import React, { useContext, useEffect, useState } from 'react'
 import { AppContext } from '../../context/AppContext'
-import {Line} from 'rc-progress'
+import { Line } from 'rc-progress'
 import Footer from '../../components/student/Footer'
+import { toast } from 'react-toastify'
+import axios from 'axios'
 
 const MyEnrollments = () => {
 
-  const { enrolledCourses, calculateCourseDuration , navigate } = useContext(AppContext)
+  const { enrolledCourses, calculateCourseDuration, navigate, userData, fetchEnrolledCourses, backendUrl,getToken, calculateNoOfLectures } = useContext(AppContext)
 
-  const [progressArray, setProgressArray] = useState([
-    { lectureCompleted: 2, totalLectures: 4 },
-    { lectureCompleted: 5, totalLectures: 6 },
-    { lectureCompleted: 1, totalLectures: 2 },
-    { lectureCompleted: 9, totalLectures: 9 },
-    { lectureCompleted: 11, totalLectures: 14 },
-    { lectureCompleted: 14, totalLectures: 17 },
-    { lectureCompleted: 1, totalLectures: 12 },
-    { lectureCompleted: 8, totalLectures: 11 },
-    { lectureCompleted: 10, totalLectures: 13 },
-    { lectureCompleted: 6, totalLectures: 10 },
-  ])
+  const [progressArray, setProgressArray] = useState([])
+
+  const getCourseProgress = async () => {
+    try {
+      const token = await getToken()
+      const tempProgressArray = await Promise.all(
+        enrolledCourses.map(async (course) => {
+          const { data } = await axios.post(`${backendUrl}/api/user/get-course-progress`, { courseId: course._id }, { headers: { Authorization: `Bearer ${token}` } })
+          let totalLectures = calculateNoOfLectures(course)
+          const lectureCompleted = data.progressData ? data.progressData.lectureCompleted.length : 0;
+          return { totalLectures, lectureCompleted }
+        })
+      )
+      setProgressArray(tempProgressArray);
+
+    } catch (error) {
+      toast.error(error.message);
+    }
+  }
+
+  useEffect(()=>{
+    if(userData){
+      fetchEnrolledCourses()
+    }
+  },[userData])
+
+  useEffect(()=>{
+    if(enrolledCourses.length > 0){
+      fetchEnrolledCourses()
+      getCourseProgress()
+    }
+  },[enrolledCourses])
   return (
     <>
       <div className='md:px-36 px-8 pt-10'>
@@ -39,7 +61,7 @@ const MyEnrollments = () => {
                   <img src={course.courseThumbnail} alt="" className='w-14 sm:w-24 md:w-28' />
                   <div className='flex-1'>
                     <p className='mb-1 max-sm:text-sm'>{course.courseTitle}</p>
-                    <Line strokeWidth={2} percent={progressArray[index] ? (progressArray[index].lectureCompleted * 100) / progressArray[index].totalLectures :0} className='bg-gray-300 rounded-full'/>
+                    <Line strokeWidth={2} percent={progressArray[index] ? (progressArray[index].lectureCompleted * 100) / progressArray[index].totalLectures : 0} className='bg-gray-300 rounded-full' />
                   </div>
                 </td>
                 <td className='px-4 py-3 max-sm:hidden'>
@@ -49,7 +71,7 @@ const MyEnrollments = () => {
                   {progressArray[index] && `${progressArray[index].lectureCompleted} / ${progressArray[index].totalLectures} `} <span>Lectures</span>
                 </td>
                 <td className='px-4 py-3 max-sm:text-right'>
-                  <button onClick={()=> navigate(`/player/${course._id}`)} className='px-3 sm:px-5 py-1.5 sm:py-2 bg-blue-700 max-sm:text-xs text-white'>
+                  <button onClick={() => navigate(`/player/${course._id}`)} className='px-3 sm:px-5 py-1.5 sm:py-2 bg-blue-700 max-sm:text-xs text-white'>
                     {progressArray[index] && progressArray[index].lectureCompleted / progressArray[index].totalLectures == 1 ? 'Completed' : 'on Going'}
                   </button>
                 </td>

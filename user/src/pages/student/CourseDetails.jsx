@@ -20,7 +20,7 @@ const CourseDetails = () => {
   const [isAlreadyEnrolled, setIsAlreadyEnrolled] = useState(false)
   const [playerData, setPlayerData] = useState(null)
 
-  const { allCourses, calculateRating, calculatNoOfLectures, calculateCourseDuration, calculateChapterTime, currency, backendUrl, userData, getToken } = useContext(AppContext)
+  const { allCourses, calculateRating, calculateNoOfLectures, calculateCourseDuration, calculateChapterTime, currency, backendUrl, userData, getToken } = useContext(AppContext)
 
   const fetchCourseData = async () => {
     try {
@@ -191,7 +191,7 @@ const CourseDetails = () => {
 
               <div className='flex items-center gap-1'>
                 <img src={assets.lesson_icon} alt="lesson icon" />
-                <p>{calculatNoOfLectures(courseData)}</p>
+                <p>{calculateNoOfLectures(courseData)}</p>
               </div>
 
             </div>

@@ -95,7 +95,7 @@ export const AppContextProvider = (props) => {
     }
 
     // function to calculate no of lectures in the course
-    const calculatNoOfLectures = (course) => {
+    const calculateNoOfLectures = (course) => {
         let totalLectures = 0
         course.courseContent.forEach(chapter => {
             if (Array.isArray(chapter.chapterContent)) {
@@ -140,7 +140,7 @@ export const AppContextProvider = (props) => {
         calculateRating,
         isEducator,
         setIsEducator,
-        calculatNoOfLectures,
+        calculateNoOfLectures,
         calculateCourseDuration,
         calculateChapterTime,
         enrolledCourses,
