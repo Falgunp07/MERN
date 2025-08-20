@@ -91,7 +91,7 @@ export const purchaseCourse = async (req, res) => {
 
 // update user Course Progress
 
-export const updateUserCourseProgress = async () => {
+export const updateUserCourseProgress = async (req,res) => {
     try {
         const userId = req.auth.userId
         const { courseId, lectureId } = req.body
@@ -120,14 +120,14 @@ export const updateUserCourseProgress = async () => {
 
 // get user course progress
 
-export const getUserCourseProgress = async (req, res) => {
+export const getUserCourseProgress = async (req, resp) => {
     try {
         const userId = req.auth.userId
         const { courseId } = req.body
         const progressData = await CourseProgress.findOne({ userId, courseId })
-        res.json({ success: true, progressData })
+        resp.json({ success: true, progressData })
     } catch (error) {
-        res.json({ success: false, message: error.message })
+        resp.json({ success: false, message: error.message })
     }
     
 }
@@ -137,6 +137,7 @@ export const getUserCourseProgress = async (req, res) => {
 export const addUserRating = async (req, res) => {
     const userId = req.auth.userId;
     const { courseId, rating } = req.body;
+    const user = await User.findById(userId);
     
     if (!courseId || !user || !rating || rating < 1 || rating > 5) {
         res.json({ success: false, message: 'Invalid Details' })
