@@ -7,7 +7,7 @@ import axios from 'axios'
 
 const MyEnrollments = () => {
 
-  const { enrolledCourses, calculateCourseDuration, navigate, userData, fetchEnrolledCourses, backendUrl,getToken, calculateNoOfLectures } = useContext(AppContext)
+  const { enrolledCourses, calculateCourseDuration, navigate, userData, fetchEnrolledCourses, backendUrl, getToken, calculateNoOfLectures } = useContext(AppContext)
 
   const [progressArray, setProgressArray] = useState([])
 
@@ -29,18 +29,34 @@ const MyEnrollments = () => {
     }
   }
 
-  useEffect(()=>{
-    if(userData){
-      fetchEnrolledCourses()
-    }
-  },[userData])
+  // useEffect(()=>{
+  //   if(userData){
+  //     fetchEnrolledCourses()
+  //   }
+  // },[userData])
 
-  useEffect(()=>{
-    if(enrolledCourses.length > 0){
-      fetchEnrolledCourses()
-      getCourseProgress()
+  // useEffect(()=>{
+  //   if(enrolledCourses.length > 0){
+  //     fetchEnrolledCourses()
+  //     getCourseProgress()
+  //   }
+  // },[enrolledCourses])
+
+  useEffect(() => {
+    if (userData) {
+      fetchEnrolledCourses();
     }
-  },[enrolledCourses])
+  }, [userData]);
+
+  useEffect(() => {
+    if (enrolledCourses.length > 0) {
+      getCourseProgress();
+    }
+  }, [enrolledCourses]);
+
+
+
+
   return (
     <>
       <div className='md:px-36 px-8 pt-10'>

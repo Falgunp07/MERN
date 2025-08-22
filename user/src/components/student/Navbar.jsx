@@ -1,6 +1,6 @@
 import React from 'react'
 import { assets } from '../../assets/assets'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { useClerk, UserButton, useUser } from '@clerk/clerk-react'
 import { useContext } from 'react'
 import { AppContext } from '../../context/AppContext'
@@ -11,6 +11,7 @@ import axios from 'axios';
 
 
 const Navbar = () => {
+  const location = useLocation();
 
   const {navigate , isEducator, backendUrl, setIsEducator,getToken} = useContext(AppContext)
   const isCourseListPage = location.pathname.includes('/course-list');
