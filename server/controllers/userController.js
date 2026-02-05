@@ -4,9 +4,65 @@ import Stripe from "stripe";
 import Course from "../models/Course.js";
 import { CourseProgress } from "../models/CourseProgress.js";
 
+const completePurchaseForUser = async (purchase) => {
+    if (purchase.status !== 'completed') {
+        purchase.status = 'completed'
+        await purchase.save()
+    }
+
+    const user = await User.findById(purchase.userId)
+    if (user && !user.enrolledCourses.includes(purchase.courseId)) {
+        user.enrolledCourses.push(purchase.courseId)
+        await user.save()
+    }
+
+    const course = await Course.findById(purchase.courseId)
+    if (course && !course.enrolledStudents.includes(purchase.userId)) {
+        course.enrolledStudents.push(purchase.userId)
+        await course.save()
+    }
+
+    const existingProgress = await CourseProgress.findOne({
+        userId: purchase.userId,
+        courseId: purchase.courseId.toString()
+    })
+
+    if (!existingProgress) {
+        await CourseProgress.create({
+            userId: purchase.userId,
+            courseId: purchase.courseId.toString(),
+            completed: false,
+            lectureCompleted: []
+        })
+    }
+}
+
+const syncPendingPurchases = async (userId) => {
+    const pendingPurchases = await Purchase.find({
+        userId,
+        status: 'pending',
+        sessionId: { $exists: true, $ne: null }
+    }).sort({ createdAt: -1 }).limit(5)
+
+    if (!pendingPurchases.length) return
+
+    const stripeInstance = new Stripe(process.env.STRIPE_SECRET_KEY)
+
+    for (const purchase of pendingPurchases) {
+        try {
+            const session = await stripeInstance.checkout.sessions.retrieve(purchase.sessionId)
+            if (session && session.payment_status === 'paid') {
+                await completePurchaseForUser(purchase)
+            }
+        } catch (error) {
+            // ignore errors for individual sessions
+        }
+    }
+}
+
 export const getUserData = async (req, res) => {
     try {
-        const userId = req.auth.userId
+        const { userId } = req.auth()
         const user = await User.findById(userId)
 
         if (!user) {
@@ -22,7 +78,8 @@ export const getUserData = async (req, res) => {
 // user enrolled courses with lecture links
 export const userEnrolledCourses = async (req, res) => {
     try {
-        const userId = req.auth.userId
+        const { userId } = req.auth()
+        await syncPendingPurchases(userId)
         const userData = await User.findById(userId).populate('enrolledCourses')
 
         res.json({ success: true, enrolledCourses: userData.enrolledCourses })
@@ -37,12 +94,12 @@ export const purchaseCourse = async (req, res) => {
     try {
         const { courseId } = req.body
         const { origin } = req.headers
-        const userId = req.auth.userId
+        const { userId } = req.auth()
         const userData = await User.findById(userId)
         const courseData = await Course.findById(courseId)
 
         if (!userData || !courseData) {
-            res.json({ success: false, message: 'Data not found' })
+            return res.json({ success: false, message: 'Data not found' })
         }
 
         const purchaseData = {
@@ -82,6 +139,8 @@ export const purchaseCourse = async (req, res) => {
             }
 
         })
+        newPurchase.sessionId = session.id
+        await newPurchase.save()
         res.json({ success: true, session_url: session.url })
     } catch (error) {
         res.json({ success: false, error: error.message });
@@ -93,7 +152,7 @@ export const purchaseCourse = async (req, res) => {
 
 export const updateUserCourseProgress = async (req,res) => {
     try {
-        const userId = req.auth.userId
+        const { userId } = req.auth()
         const { courseId, lectureId } = req.body
         const progressData = await CourseProgress.findOne({ userId, courseId })
 
@@ -122,7 +181,7 @@ export const updateUserCourseProgress = async (req,res) => {
 
 export const getUserCourseProgress = async (req, res) => {
     try {
-        const userId = req.auth.userId
+        const { userId } = req.auth()
         const { courseId } = req.body
         const progressData = await CourseProgress.findOne({ userId, courseId })
         res.json({ success: true, progressData })
@@ -135,7 +194,7 @@ export const getUserCourseProgress = async (req, res) => {
 //add user ratings to course
 
 export const addUserRating = async (req, res) => {
-    const userId = req.auth.userId;
+    const { userId } = req.auth();
     const { courseId, rating } = req.body;
     const user = await User.findById(userId);
     

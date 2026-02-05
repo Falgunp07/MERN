@@ -95,7 +95,8 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 export const clerkWebhooks = async (req, res) => {
   try {
     const whook = new Webhook(process.env.CLERK_WEBHOOK_SECRET);
-    const event = whook.verify(JSON.stringify(req.body), {
+    const payload = Buffer.isBuffer(req.body) ? req.body.toString() : JSON.stringify(req.body);
+    const event = whook.verify(payload, {
       "svix-id": req.headers["svix-id"],
       "svix-timestamp": req.headers["svix-timestamp"],
       "svix-signature": req.headers["svix-signature"],
@@ -108,7 +109,7 @@ export const clerkWebhooks = async (req, res) => {
         _id: data.id,
         email: data.email_addresses[0].email_address,
         name: `${data.first_name || ""} ${data.last_name || ""}`.trim(),
-        image: data.image_url,
+        imageUrl: data.image_url,
       };
       await User.create(userData);
     }
@@ -116,7 +117,7 @@ export const clerkWebhooks = async (req, res) => {
     if (type === "user.updated") {
       await User.findByIdAndUpdate(data.id, {
         name: `${data.first_name || ""} ${data.last_name || ""}`.trim(),
-        image: data.image_url,
+        imageUrl: data.image_url,
       });
     }
 
@@ -138,7 +139,7 @@ export const stripeWebhooks = async (req, res) => {
   try {
     const sig = req.headers["stripe-signature"];
     event = stripe.webhooks.constructEvent(
-      req.rawBody, // make sure raw body is used
+      req.body, // express.raw() stores in req.body
       sig,
       process.env.STRIPE_WEBHOOK_SECRET
     );
@@ -151,16 +152,25 @@ export const stripeWebhooks = async (req, res) => {
     const session = event.data.object;
 
     try {
-      const purchase = await Purchase.findOne({ sessionId: session.id });
-      if (purchase) {
-        purchase.status = "success";
-        await purchase.save();
+      let purchase = await Purchase.findOne({ sessionId: session.id });
+      if (!purchase && session.metadata && session.metadata.purchaseId) {
+        purchase = await Purchase.findById(session.metadata.purchaseId);
+      }
+      if (!purchase) return res.json({ received: true });
 
-        const user = await User.findById(purchase.userId);
-        if (user && !user.enrolledCourses.includes(purchase.courseId)) {
-          user.enrolledCourses.push(purchase.courseId);
-          await user.save();
-        }
+      purchase.status = "completed";
+      await purchase.save();
+
+      const user = await User.findById(purchase.userId);
+      if (user && !user.enrolledCourses.includes(purchase.courseId)) {
+        user.enrolledCourses.push(purchase.courseId);
+        await user.save();
+      }
+
+      const course = await Course.findById(purchase.courseId);
+      if (course && !course.enrolledStudents.includes(purchase.userId)) {
+        course.enrolledStudents.push(purchase.userId);
+        await course.save();
       }
     } catch (error) {
       console.error("Error updating purchase/enrollment:", error);
