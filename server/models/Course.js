@@ -4,7 +4,7 @@ const lectureSchema = new mongoose.Schema({
     lectureId: { type: String, required: true },
     lectureTitle: { type: String, required: true },
     lectureDuration: { type: Number, required: true },
-    lectureUrl: { type: String, required: true },
+    lectureUrl: { type: String, required: false },
     isPreviewFree: { type: Boolean, required: true },
     lectureOrder: { type: Number, required: true }
 }, { _id: false })

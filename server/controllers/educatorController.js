@@ -3,6 +3,7 @@ import { v2 as cloudinary } from 'cloudinary';
 import Course from '../models/Course.js';
 import { Purchase } from '../models/Purchase.js';
 import User from '../models/User.js';
+import { CourseProgress } from '../models/CourseProgress.js';
 
 // Update role to educator
 export const updateRoleToEducator = async (req, res) => {
@@ -50,6 +51,7 @@ export const addCourse = async (req, res) => {
         res.status(201).json({ success: true, message: 'Course added successfully' });
 
     } catch (error) {
+        console.error('Add course error:', error);
         res.status(500).json({ success: false, message: error.message });
     }
 };
@@ -140,6 +142,45 @@ export const getEnrolledStudentsData = async (req, res) => {
         }));
 
         res.json({ success: true, enrolledStudents });
+
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// Delete a course
+export const deleteCourse = async (req, res) => {
+    try {
+        const { userId: educatorId } = req.auth();
+        const { courseId } = req.params;
+
+        // Find the course and verify ownership
+        const course = await Course.findById(courseId);
+        
+        if (!course) {
+            return res.status(404).json({ success: false, message: 'Course not found' });
+        }
+
+        if (course.educator.toString() !== educatorId) {
+            return res.status(403).json({ success: false, message: 'Not authorized to delete this course' });
+        }
+
+        // Remove course from all enrolled students
+        await User.updateMany(
+            { enrolledCourses: courseId },
+            { $pull: { enrolledCourses: courseId } }
+        );
+
+        // Delete all course progress records
+        await CourseProgress.deleteMany({ courseId });
+
+        // Delete all purchase records
+        await Purchase.deleteMany({ courseId });
+
+        // Delete the course itself
+        await Course.findByIdAndDelete(courseId);
+
+        res.json({ success: true, message: 'Course deleted successfully' });
 
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
